@@ -40,9 +40,11 @@ void troca(Tarefa *a, Tarefa *b) {
  * @param index Índice da tarefa inserida que pode violar a propriedade do heap.
  */
 void heapify_up(MinHeap *heap, int index) {
-    if (index && heap->tarefas[(index - 1) / 2].prioridade > heap->tarefas[index].prioridade) {
-        troca(&heap->tarefas[index], &heap->tarefas[(index - 1) / 2]);
-        heapify_up(heap, (index - 1) / 2);
+    // Indice do elemento pai ao que foi passado
+    int indexPai = (index - 1) / 2;
+    if (index && heap->tarefas[indexPai].prioridade > heap->tarefas[index].prioridade) {
+        troca(&heap->tarefas[index], &heap->tarefas[indexPai]);  // Troca o pai com o filho
+        heapify_up(heap, indexPai); // Verificação da integridade do heap com o elemento PAI
     }
 }
 
@@ -56,13 +58,17 @@ void heapify_down(MinHeap *heap, int index) {
     int esquerda = 2 * index + 1;
     int direita = 2 * index + 2;
 
+    // Se a prioridade do filho à esquerda for menor
     if (esquerda < heap->tamanho && heap->tarefas[esquerda].prioridade < heap->tarefas[menor].prioridade)
-        menor = esquerda;
+        menor = esquerda; // O menor agora é o da esquerda
 
+    // Se a prioridade do filho à direita for menor
     if (direita < heap->tamanho && heap->tarefas[direita].prioridade < heap->tarefas[menor].prioridade)
-        menor = direita;
+        menor = direita; // O menor agora é o da direita
 
+    // Se o menor tiver mudado
     if (menor != index) {
+        // Troca o atual com o menor e repete o processo recursivamente
         troca(&heap->tarefas[index], &heap->tarefas[menor]);
         heapify_down(heap, menor);
     }
@@ -83,16 +89,22 @@ void inicializa_heap(MinHeap *heap) {
  * @param descricao Descrição da tarefa (string).
  */
 void inserir_tarefa(MinHeap *heap, int prioridade, const char *descricao) {
+    // Heap cheio?
     if (heap->tamanho == MAX_TAREFAS) {
         printf("Heap cheio! Não é possível adicionar mais tarefas.\n");
         return;
     }
 
     Tarefa nova = {prioridade, ""};
+
+    // Coloca a descricao passada no parametro na nova tarefa
     strncpy(nova.descricao, descricao, MAX_DESC - 1);
     nova.descricao[MAX_DESC - 1] = '\0';
 
+    // Insere no final
     heap->tarefas[heap->tamanho] = nova;
+
+    // "Heapifica" para cima a partir do ultimo elemento, verificando a integridade do Heap
     heapify_up(heap, heap->tamanho);
     heap->tamanho++;
 }
@@ -104,14 +116,21 @@ void inserir_tarefa(MinHeap *heap, int prioridade, const char *descricao) {
  */
 Tarefa remover_tarefa_mais_urgente(MinHeap *heap) {
     Tarefa tarefa_removida = { -1, "" };
+
+    // Heap vazio?
     if (heap->tamanho == 0) {
         printf("Nenhuma tarefa disponível.\n");
         return tarefa_removida;
     }
-
+    
+    // Remove a tarefa com maior prioridade
     tarefa_removida = heap->tarefas[0];
+
+    // Faz a tarefa mais prioritária na verdade ser a última
     heap->tarefas[0] = heap->tarefas[heap->tamanho - 1];
     heap->tamanho--;
+
+    // Heapifica pra baixo pra organizar os elementos corretamente
     heapify_down(heap, 0);
 
     return tarefa_removida;
