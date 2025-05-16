@@ -1,104 +1,155 @@
 #include <stdio.h>
-#define MAX 100  // Tamanho máximo do heap
+#include <stdlib.h>
+#include <string.h>
 
-// Estrutura do heap
+#define MAX_TAREFAS 100
+#define MAX_DESC 100
+
+/**
+ * @struct Tarefa
+ * @brief Representa uma tarefa com prioridade e descrição.
+ */
 typedef struct {
-    int dados[MAX];  // Vetor para armazenar os elementos do heap
-    int tamanho;     // Número atual de elementos no heap
-} Heap;
+    int prioridade;             /**< Prioridade da tarefa (menor valor = mais urgente) */
+    char descricao[MAX_DESC];   /**< Descrição da tarefa */
+} Tarefa;
 
-// Função para trocar dois elementos
-void trocar(int* a, int* b) {
-    int temp = *a;
+/**
+ * @struct MinHeap
+ * @brief Estrutura para representar um min-heap de tarefas.
+ */
+typedef struct {
+    Tarefa tarefas[MAX_TAREFAS]; /**< Array para armazenar as tarefas */
+    int tamanho;                 /**< Número atual de tarefas no heap */
+} MinHeap;
+
+/**
+ * @brief Troca duas tarefas no heap.
+ * @param a Ponteiro para a primeira tarefa.
+ * @param b Ponteiro para a segunda tarefa.
+ */
+void troca(Tarefa *a, Tarefa *b) {
+    Tarefa temp = *a;
     *a = *b;
     *b = temp;
 }
 
-// Reorganiza o heap para cima após inserção
-void subir(Heap* heap, int indice) {
-    while (indice > 0) {
-        int pai = (indice - 1) / 2;
-        if (heap->dados[indice] > heap->dados[pai]) {
-            trocar(&heap->dados[indice], &heap->dados[pai]);
-            indice = pai;
-        } else {
-            break;
-        }
+/**
+ * @brief Corrige o heap de baixo para cima para manter a propriedade de min-heap.
+ * @param heap Ponteiro para o min-heap.
+ * @param index Índice da tarefa inserida que pode violar a propriedade do heap.
+ */
+void heapify_up(MinHeap *heap, int index) {
+    if (index && heap->tarefas[(index - 1) / 2].prioridade > heap->tarefas[index].prioridade) {
+        troca(&heap->tarefas[index], &heap->tarefas[(index - 1) / 2]);
+        heapify_up(heap, (index - 1) / 2);
     }
 }
 
-// Insere um novo valor no heap
-void inserir(Heap* heap, int valor) {
-    if (heap->tamanho >= MAX) {
-        printf("Heap cheio!\n");
+/**
+ * @brief Corrige o heap de cima para baixo após remoção do elemento raiz.
+ * @param heap Ponteiro para o min-heap.
+ * @param index Índice do elemento que precisa ser "heapificado".
+ */
+void heapify_down(MinHeap *heap, int index) {
+    int menor = index;
+    int esquerda = 2 * index + 1;
+    int direita = 2 * index + 2;
+
+    if (esquerda < heap->tamanho && heap->tarefas[esquerda].prioridade < heap->tarefas[menor].prioridade)
+        menor = esquerda;
+
+    if (direita < heap->tamanho && heap->tarefas[direita].prioridade < heap->tarefas[menor].prioridade)
+        menor = direita;
+
+    if (menor != index) {
+        troca(&heap->tarefas[index], &heap->tarefas[menor]);
+        heapify_down(heap, menor);
+    }
+}
+
+/**
+ * @brief Inicializa o heap definindo seu tamanho como zero.
+ * @param heap Ponteiro para o min-heap a ser inicializado.
+ */
+void inicializa_heap(MinHeap *heap) {
+    heap->tamanho = 0;
+}
+
+/**
+ * @brief Insere uma nova tarefa no min-heap.
+ * @param heap Ponteiro para o min-heap onde a tarefa será inserida.
+ * @param prioridade Prioridade da tarefa (menor valor = mais urgente).
+ * @param descricao Descrição da tarefa (string).
+ */
+void inserir_tarefa(MinHeap *heap, int prioridade, const char *descricao) {
+    if (heap->tamanho == MAX_TAREFAS) {
+        printf("Heap cheio! Não é possível adicionar mais tarefas.\n");
         return;
     }
-    heap->dados[heap->tamanho] = valor;
-    subir(heap, heap->tamanho);
+
+    Tarefa nova = {prioridade, ""};
+    strncpy(nova.descricao, descricao, MAX_DESC - 1);
+    nova.descricao[MAX_DESC - 1] = '\0';
+
+    heap->tarefas[heap->tamanho] = nova;
+    heapify_up(heap, heap->tamanho);
     heap->tamanho++;
 }
 
-// Reorganiza o heap para baixo após remoção
-void descer(Heap* heap, int indice) {
-    while (1) {
-        int maior = indice;
-        int esq = 2 * indice + 1;
-        int dir = 2 * indice + 2;
-
-        if (esq < heap->tamanho && heap->dados[esq] > heap->dados[maior]) {
-            maior = esq;
-        }
-        if (dir < heap->tamanho && heap->dados[dir] > heap->dados[maior]) {
-            maior = dir;
-        }
-
-        if (maior != indice) {
-            trocar(&heap->dados[indice], &heap->dados[maior]);
-            indice = maior;
-        } else {
-            break;
-        }
-    }
-}
-
-// Remove o maior valor (raiz) do heap
-int remover_max(Heap* heap) {
+/**
+ * @brief Remove e retorna a tarefa com maior prioridade (menor valor).
+ * @param heap Ponteiro para o min-heap.
+ * @return Tarefa removida; se heap vazio, retorna tarefa com prioridade -1.
+ */
+Tarefa remover_tarefa_mais_urgente(MinHeap *heap) {
+    Tarefa tarefa_removida = { -1, "" };
     if (heap->tamanho == 0) {
-        printf("Heap vazio!\n");
-        return -1;
+        printf("Nenhuma tarefa disponível.\n");
+        return tarefa_removida;
     }
 
-    int max = heap->dados[0];
+    tarefa_removida = heap->tarefas[0];
+    heap->tarefas[0] = heap->tarefas[heap->tamanho - 1];
     heap->tamanho--;
-    heap->dados[0] = heap->dados[heap->tamanho];
-    descer(heap, 0);
-    return max;
+    heapify_down(heap, 0);
+
+    return tarefa_removida;
 }
 
-// Imprime o heap como vetor
-void imprimir(Heap* heap) {
-    printf("Heap: ");
-    for (int i = 0; i < heap->tamanho; i++) {
-        printf("%d ", heap->dados[i]);
+/**
+ * @brief Exibe todas as tarefas atualmente armazenadas no heap (não necessariamente ordenadas).
+ * @param heap Ponteiro para o min-heap.
+ */
+void mostrar_tarefas(MinHeap *heap) {
+    if (heap->tamanho == 0) {
+        printf("Nenhuma tarefa para mostrar.\n");
+        return;
     }
-    printf("\n");
+
+    printf("Tarefas atuais:\n");
+    for (int i = 0; i < heap->tamanho; i++) {
+        printf("Prioridade: %d - %s\n", heap->tarefas[i].prioridade, heap->tarefas[i].descricao);
+    }
 }
 
-// Função principal para testes
 int main() {
-    Heap heap;
-    heap.tamanho = 0;
+    MinHeap agenda;
+    inicializa_heap(&agenda);
 
-    inserir(&heap, 30);
-    inserir(&heap, 20);
-    inserir(&heap, 40);
-    inserir(&heap, 50);
-    inserir(&heap, 10);
+    inserir_tarefa(&agenda, 3, "Estudar para prova");
+    inserir_tarefa(&agenda, 1, "Entregar relatório");
+    inserir_tarefa(&agenda, 2, "Responder e-mails");
 
-    imprimir(&heap);
+    mostrar_tarefas(&agenda);
 
-    printf("Removido: %d\n", remover_max(&heap));
-    imprimir(&heap);
+    printf("\nPegando a tarefa mais urgente:\n");
+    Tarefa t = remover_tarefa_mais_urgente(&agenda);
+    if (t.prioridade != -1)
+        printf("Prioridade: %d, Tarefa: %s\n", t.prioridade, t.descricao);
+
+    printf("\nTarefas restantes:\n");
+    mostrar_tarefas(&agenda);
 
     return 0;
 }
